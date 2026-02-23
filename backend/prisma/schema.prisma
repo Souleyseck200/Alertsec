@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int              @id @default(autoincrement())
+  nom                String
+  prenom             String
+  email              String           @unique
+  telephone          String?
+  adresse            String?
+  grade              String?
+  unite              String?
+  secteur            String?
+  specialites        String?
+  experience         Int?             @default(0)
+  tauxReussite       Float?           @default(0)
+  password           String
+  role               Role             @default(CITOYEN)
+  matricule          String?          @unique
+  cin                String?          @unique
+  dateNaissance      DateTime?
+  groupeSanguin      String?
+  statutOperationnel String?          @default("ACTIF")
+  zoneId             Int?
+  photoUrl           String?
+  latitude           Float?
+  longitude          Float?
+  points             Int              @default(0)
+  isOccupied         Boolean          @default(false)
+  lastActive         DateTime?
+  isBlocked          Boolean          @default(false)
+  mustChangePassword Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  affectations       Affectation[]
+  contactsUrgence    ContactUrgence[]
+  logs               LogsSysteme[]
+  notifications      Notification[]
+  signalements       Signalement[]    @relation("CitoyenSignalements")
+  zone               Zone?            @relation(fields: [zoneId], references: [id])
+}
+
+model ContactUrgence {
+  id        Int    @id @default(autoincrement())
+  nom       String
+  telephone String
+  relation  String
+  userId    Int
+  user      User   @relation(fields: [userId], references: [id])
+}
+
+model Zone {
+  id              Int           @id @default(autoincrement())
+  nom             String
+  localisation    String
+  rayon_action    Int           @default(5000)
+  niveau_priorite Int           @default(1)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  signalements    Signalement[]
+  users           User[]
+}
+
+model Signalement {
+  id            Int            @id @default(autoincrement())
+  type          String
+  gravite       Gravite        @default(FAIBLE)
+  description   String
+  latitude      Float
+  longitude     Float
+  mediaUrl      String?
+  audioUrl      String?
+  videoUrl      String?
+  statut        Statut         @default(NOUVEAU)
+  type_entree   TypeEntree     @default(SOS_AUTO)
+  est_victime   Boolean        @default(true)
+  citoyenId     Int
+  zoneId        Int?
+  dateCreation  DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  affectations  Affectation[]
+  notifications Notification[]
+  zone          Zone?          @relation(fields: [zoneId], references: [id])
+  citoyen       User           @relation("CitoyenSignalements", fields: [citoyenId], references: [id])
+}
+
+model Affectation {
+  id              Int            @id @default(autoincrement())
+  signalementId   Int
+  agentId         Int
+  dateAssignation DateTime       @default(now())
+  agent           User           @relation(fields: [agentId], references: [id])
+  signalement     Signalement    @relation(fields: [signalementId], references: [id])
+  interventions   Intervention[]
+}
+
+model Intervention {
+  id             Int         @id @default(autoincrement())
+  affectationId  Int
+  dateDebut      DateTime    @default(now())
+  dateFin        DateTime?
+  notesTerrain   String?
+  rapportCloture String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  affectation    Affectation @relation(fields: [affectationId], references: [id])
+}
+
+model Notification {
+  id            Int          @id @default(autoincrement())
+  userId        Int
+  signalementId Int?
+  titre         String
+  message       String
+  estLu         Boolean      @default(false)
+  dateEnvoi     DateTime     @default(now())
+  signalement   Signalement? @relation(fields: [signalementId], references: [id])
+  user          User         @relation(fields: [userId], references: [id])
+}
+
+model LogsSysteme {
+  id        Int      @id @default(autoincrement())
+  action    String
+  adminId   Int
+  cibleId   Int?
+  details   String?
+  timestamp DateTime @default(now())
+  admin     User     @relation(fields: [adminId], references: [id])
+}
+
+enum Role {
+  CITOYEN
+  AGENT
+  ADMIN
+}
+
+enum Gravite {
+  FAIBLE
+  MOYEN
+  CRITIQUE
+  VITAL
+}
+
+enum TypeEntree {
+  SOS_AUTO
+  MANUEL
+}
+
+enum Statut {
+  NOUVEAU
+  ZONE_INCONNUE
+  EN_COURS
+  CLOTURE
+  ANNULE
+}

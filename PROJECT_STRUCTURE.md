@@ -13,11 +13,9 @@ alertsec/
 │   ├── deployment/
 │   ├── development/
 │   └── user-guides/
-├── backend/                    # API Laravel
-│   ├── app/
-│   ├── config/
-│   ├── database/
-│   ├── routes/
+├── backend/                    # API Node.js/Express + Prisma
+│   ├── src/
+│   ├── prisma/
 │   └── tests/
 ├── frontend/                   # Dashboard React
 │   ├── src/
@@ -40,11 +38,13 @@ alertsec/
 ## 📂 Détails des Dossiers
 
 ### `.github/`
+
 - Workflows CI/CD
 - Templates d'issues et PR
 - Configuration des contributions
 
 ### `docs/`
+
 - **architecture/**: Diagrammes, schémas d'architecture
 - **api/**: Documentation API (OpenAPI/Swagger)
 - **deployment/**: Guides de déploiement
@@ -52,14 +52,17 @@ alertsec/
 - **user-guides/**: Guides utilisateur
 
 ### `backend/`
+
 Structure Laravel standard avec organisation par domaine métier
 
 ### `frontend/`
+
 Structure React/Vite avec organisation par fonctionnalité
 
 ### `mobile/`
+
 Structure Expo/React Native avec organisation par écrans
 
 ### `scripts/`
-Scripts de setup, déploiement, maintenance
 
+Scripts de setup, déploiement, maintenance

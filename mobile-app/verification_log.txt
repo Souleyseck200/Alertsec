@@ -1,0 +1,11 @@
+npm warn Unknown cli config "--clear". This will stop working in the next major version of npm.
+
+> mobile-app@1.0.0 start
+> expo start
+
+Starting project at D:\laragon\www\Projet_Fin_Detude_AlertSec\mobile-app
+ΓÇ║ Port 8081 is being used by another process
+Input is required, but 'npx expo' is in non-interactive mode.
+Required input:
+> Use port 8082 instead?
+ΓÇ║ Skipping dev server

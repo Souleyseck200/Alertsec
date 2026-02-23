@@ -1,0 +1,81 @@
+app/(auth)/register.tsx(29,38): error TS2339: Property 'register' does not exist on type '{ login: (credentials: any) => Promise<any>; logout: () => Promise<void>; }'.
+app/(citizen)/index.tsx(33,32): error TS2307: Cannot find module 'expo-linear-gradient' or its corresponding type declarations.
+app/(citizen)/map.tsx(26,32): error TS2307: Cannot find module 'expo-linear-gradient' or its corresponding type declarations.
+app/(citizen)/map.tsx(155,29): error TS2741: Property 'label' is missing in type '{ variant: "tactical"; size: "icon"; leftIcon: LucideIcon; className: string; }' but required in type 'ButtonProps'.
+app/onboarding/agent-screen.tsx(21,32): error TS2307: Cannot find module 'expo-linear-gradient' or its corresponding type declarations.
+app/onboarding/map-screen.tsx(21,32): error TS2307: Cannot find module 'expo-linear-gradient' or its corresponding type declarations.
+app/onboarding/person-screen.tsx(22,32): error TS2307: Cannot find module 'expo-linear-gradient' or its corresponding type declarations.
+app/sos/index.tsx(27,32): error TS2307: Cannot find module 'expo-linear-gradient' or its corresponding type declarations.
+components/TacticalMap.tsx(90,7): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+components/TacticalMap.tsx(90,8): error TS2786: 'MapView' cannot be used as a JSX component.
+  Its type 'typeof MapView' is not a valid JSX element type.
+    Types of construct signatures are incompatible.
+      Type 'new (props: MapViewProps) => MapView' is not assignable to type 'new (props: any, context: any) => Component<any, any, any>'.
+        Type 'MapView' is missing the following properties from type 'Component<any, any, any>': context, setState, forceUpdate, props, state
+components/TacticalMap.tsx(104,11): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+components/TacticalMap.tsx(104,12): error TS2786: 'Marker' cannot be used as a JSX component.
+  Its type 'typeof MapMarker' is not a valid JSX element type.
+    Types of construct signatures are incompatible.
+      Type 'new (props: MapMarkerProps) => MapMarker' is not assignable to type 'new (props: any, context: any) => Component<any, any, any>'.
+        Type 'MapMarker' is missing the following properties from type 'Component<any, any, any>': setState, forceUpdate, props, state
+components/TacticalMap.tsx(122,13): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+components/TacticalMap.tsx(122,14): error TS2786: 'Polygon' cannot be used as a JSX component.
+  Its type 'typeof MapPolygon' is not a valid JSX element type.
+    Types of construct signatures are incompatible.
+      Type 'new (props: MapPolygonProps) => MapPolygon' is not assignable to type 'new (props: any, context: any) => Component<any, any, any>'.
+        Type 'MapPolygon' is missing the following properties from type 'Component<any, any, any>': setState, forceUpdate, props, state
+components/ui/badge.tsx(64,48): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ children: (false | Element)[]; style: (ViewStyle | { alignItems: "center"; justifyContent: "center"; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ children: (false | Element)[]; style: (ViewStyle | { alignItems: "center"; justifyContent: "center"; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+components/ui/button.tsx(91,52): error TS2322: Type '{ children: (false | Element)[]; style: (ViewStyle | { alignItems: "center"; justifyContent: "center"; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & ViewProps & { animatedProps?: Partial<ViewProps> | undefined; layout?: BaseAnimationBuilder | LayoutAnimationFunction | typeof BaseAnimationBuilder | undefined; entering?: BaseAnimationBuilder | ... 3 more ... | undefined; exiting?: BaseAnimationBuilder | ... 3 more ... | undefined; } & MotiPro...'.
+  Property 'className' does not exist on type 'IntrinsicAttributes & ViewProps & { animatedProps?: Partial<ViewProps> | undefined; layout?: BaseAnimationBuilder | LayoutAnimationFunction | typeof BaseAnimationBuilder | undefined; entering?: BaseAnimationBuilder | ... 3 more ... | undefined; exiting?: BaseAnimationBuilder | ... 3 more ... | undefined; } & MotiPro...'.
+components/ui/button.tsx(133,93): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '{ children: string; style: ({ fontWeight: "900"; letterSpacing: number; } | { color: string; fontSize: number; })[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '{ children: string; style: ({ fontWeight: "900"; letterSpacing: number; } | { color: string; fontSize: number; })[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+components/ui/card.tsx(11,32): error TS2307: Cannot find module 'expo-linear-gradient' or its corresponding type declarations.
+components/ui/card.tsx(35,40): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ children: ReactNode; style: (ViewStyle | { width: "100%"; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ children: ReactNode; style: (ViewStyle | { width: "100%"; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+components/ui/card.tsx(41,39): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '{ children: ReactNode; style: (TextStyle | { fontSize: number; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '{ children: ReactNode; style: (TextStyle | { fontSize: number; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+components/ui/card.tsx(47,45): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: TextProps): Text', gave the following error.
+    Type '{ children: ReactNode; style: (TextStyle | { fontSize: number; marginTop: number; lineHeight: number; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+  Overload 2 of 2, '(props: TextProps, context: any): Text', gave the following error.
+    Type '{ children: ReactNode; style: (TextStyle | { fontSize: number; marginTop: number; lineHeight: number; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<Text> & Readonly<TextProps>'.
+components/ui/card.tsx(53,41): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ children: ReactNode; style: (ViewStyle | { width: "100%"; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ children: ReactNode; style: (ViewStyle | { width: "100%"; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+components/ui/card.tsx(59,40): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: ViewProps): View', gave the following error.
+    Type '{ children: ReactNode; style: (ViewStyle | { width: "100%"; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+  Overload 2 of 2, '(props: ViewProps, context: any): View', gave the following error.
+    Type '{ children: ReactNode; style: (ViewStyle | { width: "100%"; } | undefined)[]; className: string; }' is not assignable to type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+      Property 'className' does not exist on type 'IntrinsicAttributes & IntrinsicClassAttributes<View> & Readonly<ViewProps>'.
+components/ui/card.tsx(78,7): error TS2322: Type '{ children: (Element | ReactNode)[]; from: { scale: number; } | undefined; animate: { scale: number; } | undefined; className: string; style: (ViewStyle | undefined)[]; }' is not assignable to type 'IntrinsicAttributes & ViewProps & { animatedProps?: Partial<ViewProps> | undefined; layout?: BaseAnimationBuilder | LayoutAnimationFunction | typeof BaseAnimationBuilder | undefined; entering?: BaseAnimationBuilder | ... 3 more ... | undefined; exiting?: BaseAnimationBuilder | ... 3 more ... | undefined; } & MotiPro...'.
+  Property 'className' does not exist on type 'IntrinsicAttributes & ViewProps & { animatedProps?: Partial<ViewProps> | undefined; layout?: BaseAnimationBuilder | LayoutAnimationFunction | typeof BaseAnimationBuilder | undefined; entering?: BaseAnimationBuilder | ... 3 more ... | undefined; exiting?: BaseAnimationBuilder | ... 3 more ... | undefined; } & MotiPro...'.
+context/AuthContext.tsx(37,46): error TS2493: Tuple type '[string]' of length '1' has no element at index '1'.

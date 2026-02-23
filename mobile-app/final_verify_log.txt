@@ -1,0 +1,2 @@
+Starting project at D:\laragon\www\Projet_Fin_Detude_AlertSec\mobile-app
+Metro is running in CI mode, reloads are disabled. Remove CI=true to enable watch mode.

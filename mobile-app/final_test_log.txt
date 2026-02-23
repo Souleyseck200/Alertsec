@@ -1,0 +1,12 @@
+npm warn Unknown cli config "--interactive". This will stop working in the next major version of npm.
+
+> mobile-app@1.0.0 start
+> expo start
+
+Starting project at D:\laragon\www\Projet_Fin_Detude_AlertSec\mobile-app
+Starting Metro Bundler
+Networking has been disabled
+Skipping dependency validation in offline mode
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+ΓÇ║ Detected a change in babel.config.js. Restart the server to see the new results. You may need to clear the bundler cache with the --clear flag for your changes to take effect.

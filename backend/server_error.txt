@@ -1,0 +1,22 @@
+
+> backend@1.0.0 dev
+> ts-node src/index.ts
+
+D:\laragon\www\Projet_Fin_D'etude_(AlertSec)\backend\node_modules\ts-node\src\index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: Γ¿» Unable to compile TypeScript:
+src/services/interventionService.ts(171,9): error TS2353: Object literal may only specify known properties, and 'grade' does not exist in type 'UserSelect<DefaultArgs>'.
+
+    at createTSError (D:\laragon\www\Projet_Fin_D'etude_(AlertSec)\backend\node_modules\ts-node\src\index.ts:859:12)
+    at reportTSError (D:\laragon\www\Projet_Fin_D'etude_(AlertSec)\backend\node_modules\ts-node\src\index.ts:863:19)
+    at getOutput (D:\laragon\www\Projet_Fin_D'etude_(AlertSec)\backend\node_modules\ts-node\src\index.ts:1077:36)
+    at Object.compile (D:\laragon\www\Projet_Fin_D'etude_(AlertSec)\backend\node_modules\ts-node\src\index.ts:1433:41)
+    at Module.m._compile (D:\laragon\www\Projet_Fin_D'etude_(AlertSec)\backend\node_modules\ts-node\src\index.ts:1617:30)
+    at node:internal/modules/cjs/loader:1895:10
+    at Object.require.extensions.<computed> [as .ts] (D:\laragon\www\Projet_Fin_D'etude_(AlertSec)\backend\node_modules\ts-node\src\index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14) {
+  diagnosticCodes: [ 2353 ]
+}

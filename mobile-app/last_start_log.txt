@@ -1,0 +1,19 @@
+npm warn Unknown cli config "--interactive". This will stop working in the next major version of npm.
+
+> mobile-app@1.0.0 start
+> expo start
+
+Starting project at D:\laragon\www\Projet_Fin_Detude_AlertSec\mobile-app
+Error: Error loading Metro config at: D:\laragon\www\Projet_Fin_Detude_AlertSec\mobile-app\metro.config.js
+NativeWind only supports Tailwind CSS v3
+Error: NativeWind only supports Tailwind CSS v3
+    at tailwindConfig (D:\laragon\www\Projet_Fin_Detude_AlertSec\mobile-app\node_modules\nativewind\src\metro\tailwind\index.ts:20:11)
+    at withNativeWind (D:\laragon\www\Projet_Fin_Detude_AlertSec\mobile-app\node_modules\nativewind\src\metro\index.ts:45:39)
+    at Object.<anonymous> (D:\laragon\www\Projet_Fin_Detude_AlertSec\mobile-app\metro.config.js:6:18)
+    at Module._compile (node:internal/modules/cjs/loader:1730:14)
+    at Object..js (node:internal/modules/cjs/loader:1895:10)
+    at Module.load (node:internal/modules/cjs/loader:1465:32)
+    at Function._load (node:internal/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at cjsLoader (node:internal/modules/esm/translators:266:5)
