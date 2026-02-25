@@ -2,22 +2,24 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Radio } from 'lucide-react';
 import { Socket } from 'socket.io-client';
-import { Agent } from '../pages/CommandCenter';
+import { Agent } from '../types';
 
 interface TalkieWalkieButtonProps {
   socket: Socket | null;
   agents: Agent[];
   addTicker?: (msg: string, type?: 'info' | 'alert' | 'success') => void;
+  missionId?: number | null;
 }
 
-const TalkieWalkieButton: React.FC<TalkieWalkieButtonProps> = ({ socket, addTicker }) => {
+import RecordRTC, { StereoAudioRecorder } from 'recordrtc';
+
+const TalkieWalkieButton: React.FC<TalkieWalkieButtonProps> = ({ socket, addTicker, missionId }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [volume, setVolume] = useState(0); // 0–1
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const recorderRef = useRef<RecordRTC | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const measureVolume = useCallback(() => {
     if (!analyserRef.current) return;
@@ -32,40 +34,66 @@ const TalkieWalkieButton: React.FC<TalkieWalkieButtonProps> = ({ socket, addTick
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Volume measurement setup
       audioContextRef.current = new AudioContext();
       const source = audioContextRef.current.createMediaStreamSource(stream);
       analyserRef.current = audioContextRef.current.createAnalyser();
       analyserRef.current.fftSize = 256;
       source.connect(analyserRef.current);
 
-      const mr = new MediaRecorder(stream);
-      chunksRef.current = [];
-      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        blob.arrayBuffer().then(buf => {
-          socket?.emit('VOICE_MESSAGE', { targetId: null, data: buf });
-        });
-        stream.getTracks().forEach(t => t.stop());
-      };
-      mr.start();
-      mediaRecorderRef.current = mr;
+      recorderRef.current = new RecordRTC(stream, {
+        type: 'audio',
+        mimeType: 'audio/wav',
+        recorderType: StereoAudioRecorder, // Forces clean WAV encoding
+        desiredSampRate: 16000, // 16kHz for fast transmission
+        numberOfAudioChannels: 1 // Mono
+      });
+
+      recorderRef.current.startRecording();
       setIsRecording(true);
-      if (addTicker) addTicker('RADIO : Diffusion Globale en cours...', 'info');
+      if (addTicker) addTicker(missionId ? `RADIO : Mission #${missionId} (Tactique)...` : 'RADIO : Diffusion Globale (Tactique)...', 'info');
       measureVolume();
-    } catch (e) { console.error('Microphone error:', e); }
-  }, [socket, measureVolume, addTicker]);
+    } catch (e) {
+      console.error('Microphone error:', e);
+      if (addTicker) addTicker('❌ Erreur microphone', 'alert');
+    }
+  }, [addTicker, measureVolume, missionId]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      if (addTicker) addTicker('Transmission Radio terminée', 'success');
+    if (recorderRef.current && isRecording) {
+      recorderRef.current.stopRecording(() => {
+        const blob = recorderRef.current!.getBlob();
+        
+        // Convert Blob directly to Base64 (Data URI)
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          const base64data = reader.result as string; 
+          
+          if (socket?.connected) {
+            console.log(`🎙️ [WAV] Sending Base64 burst (${Math.round(base64data.length / 1024)} KB) - Mission: ${missionId || 'Global'}`);
+            // We pass the base64 string directly
+            socket.emit('VOICE_MESSAGE', { targetId: null, missionId: missionId, data: base64data });
+            if (addTicker) addTicker('✅ Transmission envoyée', 'success');
+          } else {
+            console.error('❌ Socket non connecté');
+            if (addTicker) addTicker('❌ Erreur : Serveur déconnecté', 'alert');
+          }
+        };
+
+        // Stop all tracks to release mic
+        recorderRef.current?.getInternalRecorder()?.getBlob(); // flush internal
+        recorderRef.current?.destroy();
+        recorderRef.current = null;
+      });
     }
+
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     audioContextRef.current?.close();
     setIsRecording(false);
     setVolume(0);
-  }, [isRecording, addTicker]);
+  }, [isRecording, socket, addTicker, missionId]);
 
   useEffect(() => () => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -73,7 +101,7 @@ const TalkieWalkieButton: React.FC<TalkieWalkieButtonProps> = ({ socket, addTick
   }, []);
 
   return (
-    <div className="absolute bottom-8 right-8 z-[1000] flex flex-col items-center gap-3">
+    <div className="absolute bottom-12 right-12 z-[9999] flex flex-col items-center gap-3">
       {/* Recording label */}
       <AnimatePresence>
         {isRecording && (
@@ -83,8 +111,10 @@ const TalkieWalkieButton: React.FC<TalkieWalkieButtonProps> = ({ socket, addTick
             exit={{ opacity: 0, y: 8 }}
             className="flex items-center gap-2 glass rounded-xl px-4 py-2 border border-zinc-800"
           >
-            <Radio className="w-3 h-3 text-red-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-red-500">Diffusion : Toutes Unités</span>
+            <Radio className={`w-3 h-3 animate-pulse ${missionId ? 'text-amber-500' : 'text-red-500'}`} />
+            <span className={`text-[10px] font-black uppercase tracking-widest ${missionId ? 'text-amber-500' : 'text-red-500'}`}>
+              {missionId ? `Mission #${missionId}` : 'Diffusion : Toutes Unités'}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -126,10 +156,7 @@ const TalkieWalkieButton: React.FC<TalkieWalkieButtonProps> = ({ socket, addTick
         )}
 
         <button
-          onMouseDown={startRecording}
-          onMouseUp={stopRecording}
-          onTouchStart={startRecording}
-          onTouchEnd={stopRecording}
+          onClick={() => isRecording ? stopRecording() : startRecording()}
           className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-200 select-none
             ${isRecording
               ? 'bg-red-600 shadow-red-500/30 scale-110'
@@ -144,7 +171,7 @@ const TalkieWalkieButton: React.FC<TalkieWalkieButtonProps> = ({ socket, addTick
       </div>
 
       <p className="text-[8px] font-bold text-zinc-700 uppercase tracking-widest text-center">
-        {isRecording ? 'Relâcher pour envoyer' : 'Maintenir'}
+        {isRecording ? 'Cliquer pour envoyer' : 'Cliquer pour parler'}
       </p>
     </div>
   );

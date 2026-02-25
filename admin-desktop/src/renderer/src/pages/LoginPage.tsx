@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { authService } from '../services/api';
+import logo from '../assets/logo.png';
 
 /**
  * ALERTSEC COMMAND CENTER - PREMIUM LOGIN REDESIGN
@@ -406,10 +407,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <div className="text-center mb-10">
             <motion.div 
               whileHover={{ scale: 1.1, rotate: 5 }}
-              className="inline-flex items-center justify-center w-20 h-20 rounded-[2rem] bg-gradient-to-br from-blue-500 to-indigo-600 p-0.5 mb-6 shadow-2xl shadow-blue-500/20"
+              className="inline-flex items-center justify-center w-28 h-28 rounded-[2.5rem] bg-gradient-to-br from-blue-500 to-indigo-600 p-0.5 mb-6 shadow-2xl shadow-blue-500/20"
             >
-              <div className="w-full h-full rounded-[1.8rem] bg-[#0c0c0e] flex items-center justify-center">
-                <Shield className="w-10 h-10 text-white" />
+              <div className="w-full h-full rounded-[2.3rem] bg-[#0c0c0e] flex items-center justify-center p-2">
+                <img src={logo} alt="AlertSec" className="w-full h-full object-contain" />
               </div>
             </motion.div>
             <h1 className="text-4xl font-black text-white tracking-tighter mb-2 italic">
@@ -613,8 +614,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       </div>
       
       {/* Large background watermarks */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none opacity-[0.02] scale-[2.5] z-0">
-        <Shield className="w-96 h-96 text-white" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none opacity-[0.03] scale-[4] z-0">
+        <img src={logo} alt="" className="w-96 h-96 object-contain grayscale invert" />
       </div>
     </div>
   );

@@ -12,9 +12,9 @@ import {
   CheckCircle, Map as MapIcon, Zap, BrainCircuit, TrendingUp,
   Shield, Search, Layers, User as UserIcon, Activity, Mic, PowerOff
 } from 'lucide-react';
-import SOSSheet, { Signalement, Agent } from '../components/SOSSheet';
+import { Signalement, Agent, TickerEvent, Zone } from '../types';
+import SOSSheet from '../components/SOSSheet';
 import TalkieWalkieButton from '../components/TalkieWalkieButton';
-import { TickerEvent, Zone } from '../App';
 import { adminService } from '../services/api';
 import { Socket } from 'socket.io-client';
 
@@ -134,6 +134,8 @@ const SITACView: React.FC<SITACViewProps> = ({
   const [showPredictions, setShowPredictions] = useState(false);
   const [patrolRoute, setPatrolRoute] = useState<[number, number][] | null>(null);
   
+  const activeSOS = signalements.filter(s => s.statut === 'NOUVEAU' || s.statut === 'EN_COURS' || s.statut === 'ZONE_INCONNUE');
+
   // Tactical Auto-Focus Logic
   React.useEffect(() => {
     if (activeSOS.length > 0) {
@@ -149,10 +151,6 @@ const SITACView: React.FC<SITACViewProps> = ({
   // Tactical Replay State (Phase 38)
   const [replayTime, setReplayTime] = useState<number>(0); // 0 = live, < 0 = past minutes
   const [isReplayMode, setIsReplayMode] = useState(false);
-
-  // Tactical Replay State (Phase 38)
-
-  const activeSOS = signalements.filter(s => s.statut === 'NOUVEAU' || s.statut === 'EN_COURS' || s.statut === 'ZONE_INCONNUE');
   
   // Filter by time if in Replay Mode (Elite Logic)
   const timeFilteredSOS = isReplayMode 
@@ -198,12 +196,11 @@ const SITACView: React.FC<SITACViewProps> = ({
   React.useEffect(() => {
     if (!socket) return;
     
-    socket.on('VOICE_BROADCAST', (payload: { from: number; data: ArrayBuffer; agentName?: string }) => {
+    socket.on('VOICE_BROADCAST', (payload: { from: number; data: string; agentName?: string }) => {
       if (payload.from === user?.id) return; 
       
-      const blob = new Blob([payload.data], { type: 'audio/webm' });
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+      // With Base64 Data URI, we can play it directly
+      const audio = new Audio(payload.data);
       audio.play().catch(e => console.warn('Audio playback failed:', e));
       
       addTicker(`Réception Tactical Voice : ${payload.agentName || 'Unité de terrain'}`, 'info');
@@ -525,7 +522,7 @@ const SITACView: React.FC<SITACViewProps> = ({
             {agentMarkers}
           </MapContainer>
 
-          <TalkieWalkieButton socket={socket} agents={agents} addTicker={addTicker} />
+          <TalkieWalkieButton socket={socket} agents={agents} addTicker={addTicker} missionId={selectedSOS?.id} />
 
           {/* Map Totals Overlay */}
           <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 1000, background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 12 }}>

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import signalementController from '../controllers/signalementController';
-import { auth, checkRole, isCitoyen } from '../middlewares/authMiddleware';
+import adminController from '../controllers/adminController';
+import { auth, checkRole, isCitoyen, isAdmin } from '../middlewares/authMiddleware';
 import { upload } from '../utils/upload';
 
 const router = Router();
@@ -20,5 +21,6 @@ router.get('/heatmap', auth, signalementController.getHeatmap);
 router.get('/all', auth, checkRole(['AGENT', 'ADMIN']), signalementController.getAllSignalements);
 router.patch('/:id/status', auth, checkRole(['AGENT', 'ADMIN']), signalementController.updateStatus);
 router.patch('/:id/annuler', auth, signalementController.cancelSignalement);
+router.delete('/admin-delete/:id', auth, isAdmin, adminController.deleteSignalement);
 
 export default router;

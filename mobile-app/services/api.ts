@@ -54,4 +54,10 @@ export const agentService = {
   getZones: () => api.get('/admin/zones'), // Mirroring admin-desktop access if needed locally
 };
 
+export const interventionService = {
+  takeCharge: (signalementId: number) => api.post('/interventions/take-charge', { signalementId }),
+  close: (interventionId: number, rapport: string) => api.patch(`/interventions/${interventionId}/close`, { rapport }),
+  getRoute: (interventionId: number) => api.get(`/interventions/${interventionId}/route`),
+};
+
 export default api;

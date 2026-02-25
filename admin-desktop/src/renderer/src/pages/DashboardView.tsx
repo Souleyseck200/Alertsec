@@ -4,7 +4,7 @@ import {
   AlertTriangle, Users, Map, TrendingUp, TrendingDown, Activity,
   Clock, CheckCircle, Zap, BarChart2, Eye, ArrowRight, Shield
 } from 'lucide-react';
-import { Agent, AppStats, Signalement, TickerEvent, Zone, ViewId } from '../App';
+import { Agent, AppStats, Signalement, TickerEvent, Zone, ViewId } from '../types';
 
 interface DashboardViewProps {
   stats: AppStats | null; signalements: Signalement[]; agents: Agent[];

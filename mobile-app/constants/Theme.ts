@@ -2,13 +2,20 @@ export const Colors = {
   background: '#09090b',
   card: '#18181b',
   border: '#27272a',
+  surfaceHighlight: '#3f3f46',
   text: '#ffffff',
   textMuted: '#71717a',
-  accentBlue: '#2563eb',
+  accentBlue: '#3b82f6',
   accentRed: '#ef4444',
   accentOrange: '#f59e0b',
   accentGreen: '#10b981',
   accentPurple: '#a855f7',
+  // Safe Glassmorphism Additions
+  glassWhite: 'rgba(255, 255, 255, 0.1)',
+  glassBlack: 'rgba(0, 0, 0, 0.6)',
+  glassBorder: 'rgba(255, 255, 255, 0.2)',
+  safeBlue: '#007AFF', // Standard iOS-style Blue
+  emergencyRed: '#FF3B30', // Standard iOS-style Red
 };
 
 export const MapStyle = [

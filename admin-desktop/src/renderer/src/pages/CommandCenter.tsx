@@ -22,20 +22,7 @@ import api from '../services/api';
 
 const SOCKET_URL = 'http://localhost:3000';
 
-// ─── TYPES ─────────────────────────────────────────────────────────────────
-export interface Signalement {
-  id: number; type: string; description: string; gravite: string; statut: string;
-  latitude: number; longitude: number; mediaUrl?: string; audioUrl?: string; videoUrl?: string;
-  citoyenId: number; zoneId?: number; dateCreation: string;
-}
-export interface Agent {
-  id: number; nom: string; prenom: string; role: string;
-  latitude?: number; longitude?: number; zoneId?: number; isOccupied?: boolean; points?: number;
-}
-export interface Zone {
-  id: number; nom: string; localisation: string; rayon_action: number; niveau_priorite: number;
-}
-export interface TickerEvent { id: string; message: string; time: Date; }
+import { Signalement, Agent, Zone, TickerEvent } from '../types';
 
 // ─── MAP CONTROLLER ────────────────────────────────────────────────────────
 const MapController: React.FC<{ flyToTarget: [number, number] | null }> = ({ flyToTarget }) => {
@@ -90,7 +77,7 @@ const CommandCenter: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const addTicker = useCallback((msg: string) => {
-    setTickerEvents(prev => [{ id: Date.now().toString(), message: msg, time: new Date() }, ...prev].slice(0, 20));
+    setTickerEvents(prev => [{ id: Date.now().toString(), message: msg, time: new Date(), type: 'info' } as TickerEvent, ...prev].slice(0, 20));
   }, []);
 
   // ─── DATA FETCH ───────────────────────────────────────────────────────────
@@ -149,7 +136,7 @@ const CommandCenter: React.FC = () => {
       });
 
       if (sig.gravite === 'VITAL') audioRef.current?.play().catch(() => {});
-      if (sig.latitude && sig.longitude) setFlyToTarget([sig.latitude, sig.longitude]);
+      if (sig.latitude && sig.longitude) setFlyToTarget([Number(sig.latitude), Number(sig.longitude)]);
 
       if ('electron' in window) {
         (window as any).electron.sendNotification(`🚨 SOS ${sig.gravite} — ${sig.type}`, sig.description?.slice(0, 80) || '');
@@ -163,6 +150,7 @@ const CommandCenter: React.FC = () => {
     s.on('AGENT_CONNECTED', (d: { userId: number; nom?: string }) => {
       addTicker(`🟢 Agent ${d.nom || `#${d.userId}`} vient de se connecter`);
       toast(`🟢 Agent ${d.nom || `#${d.userId}`} connecté`, { duration: 4000 });
+      if (d.latitude && d.longitude) setFlyToTarget([Number(d.latitude), Number(d.longitude)]);
     });
 
     setSocket(s);
@@ -175,7 +163,7 @@ const CommandCenter: React.FC = () => {
   // ─── HANDLERS ────────────────────────────────────────────────────────────
   const handleSOSClick = (sig: Signalement) => {
     setSelectedSOS(sig);
-    if (sig.latitude && sig.longitude) setFlyToTarget([sig.latitude, sig.longitude]);
+    if (sig.latitude && sig.longitude) setFlyToTarget([Number(sig.latitude), Number(sig.longitude)]);
   };
 
   const handleAssign = async (signalementId: number, agentId: number) => {
@@ -184,7 +172,7 @@ const CommandCenter: React.FC = () => {
       const agent = agents.find(a => a.id === agentId);
       const sig = signalements.find(s => s.id === signalementId);
       if (agent?.latitude && agent?.longitude && sig?.latitude && sig?.longitude) {
-        setRouteLine([[agent.latitude, agent.longitude], [sig.latitude, sig.longitude]]);
+        setRouteLine([[Number(agent.latitude), Number(agent.longitude)], [Number(sig.latitude), Number(sig.longitude)]]);
         setTimeout(() => setRouteLine(null), 30000);
       }
       addTicker(`✅ Agent ${agent?.nom || '#' + agentId} affecté au SOS #${signalementId}`);
@@ -292,6 +280,7 @@ const CommandCenter: React.FC = () => {
 
       {/* SOS Detail Sheet (slides from right) */}
       <SOSSheet
+        socket={socket}
         signalement={selectedSOS}
         agents={agents}
         onAssign={handleAssign}

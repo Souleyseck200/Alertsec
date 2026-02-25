@@ -4,48 +4,71 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useAuth } from '../../context/AuthContext';
 import TacticalMap from '../../components/TacticalMap';
-import AgentTalkie from '../../components/AgentTalkie';
+import TacticalHUD from '../../components/TacticalHUD';
+import MissionToast from '../../components/MissionToast';
+import TalkieWalkieButton from '../../components/TalkieWalkieButton';
+import InterventionDrawer from '../../components/InterventionDrawer';
 import socketService from '../../services/socket';
-import { LogOut, Navigation2, Menu, Bell } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { Audio } from 'expo-av';
 import { Colors } from '../../constants/Theme';
+import { useActiveMission } from '../../hooks/useActiveMission';
 
 export default function AgentHome() {
-  const { logout, user } = useAuth();
-  const [tracking, setTracking] = useState(false);
+  const { user } = useAuth();
+  const [newMissionAlert, setNewMissionAlert] = useState<any | null>(null);
+  const [selectedSOS, setSelectedSOS] = useState<any | null>(null);
+
+  // Hook handles: activeMission, activeInterventionId, isProcessing, routePoints, acceptMission, closeMission
+  const mission = useActiveMission(user);
 
   useEffect(() => {
     // Listen for voice broadcasts
     socketService.socket?.on('VOICE_BROADCAST', async (data: any) => {
-      console.log('🎙️ Incoming voice broadcast...');
+      console.log('🎙️ [VOICE] Incoming broadcast from:', data.from);
       try {
+        if (!data.data || typeof data.data !== 'string') return;
+        
         const { sound } = await Audio.Sound.createAsync(
-          { uri: `data:audio/webm;base64,${Buffer.from(data.data).toString('base64')}` },
+          { uri: data.data },
           { shouldPlay: true }
         );
-        await sound.playAsync();
-      } catch (err) {
-        console.error('Error playing broadcast', err);
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didFinish) {
+            sound.unloadAsync();
+          }
+        });
+      } catch (err: any) {
+        console.error('❌ [VOICE] Error playing broadcast:', err.message);
       }
+    });
+
+    // Listen for new SOS alerts
+    socketService.socket?.on('NOUVEAU_SIGNALEMENT', (data: any) => {
+      if (mission.activeMission) return;
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setNewMissionAlert(data);
     });
 
     return () => {
       socketService.socket?.off('VOICE_BROADCAST');
+      socketService.socket?.off('NOUVEAU_SIGNALEMENT');
     };
-  }, []);
+  }, [mission.activeMission]);
 
   useEffect(() => {
     let locationSubscription: any;
-
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
 
-      setTracking(true);
       locationSubscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, distanceInterval: 10 },
         (loc) => {
           socketService.updateLocation(loc.coords.latitude, loc.coords.longitude);
+          if (mission.activeMission) {
+            mission.updateRoute(loc.coords, mission.activeMission);
+          }
         }
       );
     })();
@@ -53,46 +76,51 @@ export default function AgentHome() {
     return () => {
       if (locationSubscription) locationSubscription.remove();
     };
-  }, []);
+  }, [mission.activeMission]);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <TacticalMap />
       
-      <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-        <View style={styles.header}>
-          <View style={styles.badge}>
-            <Navigation2 size={12} color={Colors.accentBlue} fill={Colors.accentBlue} />
-            <Text style={styles.badgeText}>UNITÉ {user?.id} // OPÉRATIONNEL</Text>
-          </View>
-          <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-            <LogOut size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
+      <TacticalMap 
+        onSOSSelect={setSelectedSOS} 
+        activeMissionId={mission.activeMission?.id}
+        routePoints={mission.routePoints}
+      />
+      
+      <TacticalHUD isMissionActive={!!mission.activeMission} />
 
-        <View style={styles.bottomZone}>
-          <View style={styles.agentCard}>
-            <Text style={styles.rank}>AGENT TACTIQUE</Text>
-            <Text style={styles.name}>{user?.nom?.toUpperCase()} {user?.prenom?.toUpperCase()}</Text>
-          </View>
-          
-          <AgentTalkie />
-        </View>
-      </SafeAreaView>
+      <MissionToast 
+        alert={newMissionAlert} 
+        onHide={() => setNewMissionAlert(null)}
+        onDetails={() => {
+          setSelectedSOS(newMissionAlert);
+          setNewMissionAlert(null);
+        }}
+        onPress={async () => {
+          if (newMissionAlert) {
+            await mission.acceptMission(newMissionAlert.id);
+            setNewMissionAlert(null);
+          }
+        }}
+      />
+
+      <TalkieWalkieButton missionId={mission.activeMission?.id} />
+
+      {(selectedSOS || mission.activeMission) && (
+        <InterventionDrawer 
+          sos={selectedSOS || mission.activeMission}
+          onClose={() => setSelectedSOS(null)}
+          onAccept={mission.acceptMission}
+          onCloseMission={mission.closeMission}
+          isProcessing={mission.isProcessing}
+          activeMissionId={mission.activeMission?.id}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  overlay: { ...StyleSheet.absoluteFillObject, padding: 20, justifyContent: 'space-between' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
-  badge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(9, 9, 11, 0.9)', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(37, 99, 235, 0.4)' },
-  badgeText: { color: Colors.accentBlue, fontSize: 10, fontWeight: '900', marginLeft: 8, letterSpacing: 1 },
-  logoutBtn: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(9, 9, 11, 0.9)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
-  bottomZone: { gap: 20, alignItems: 'center', paddingBottom: 20 },
-  agentCard: { width: '100%', backgroundColor: 'rgba(9, 9, 11, 0.9)', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
-  rank: { color: Colors.accentBlue, fontSize: 9, fontWeight: '900', letterSpacing: 2 },
-  name: { color: '#fff', fontSize: 18, fontWeight: '900', marginTop: 4 },
 });

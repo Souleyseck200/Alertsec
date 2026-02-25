@@ -32,8 +32,8 @@ class SocketService {
     this.socket?.emit('UPDATE_LOCATION', { lat, lng });
   }
 
-  sendVoiceMessage(data: ArrayBuffer) {
-    this.socket?.emit('VOICE_MESSAGE', { targetId: null, data });
+  sendVoiceMessage(data: ArrayBuffer | string, missionId?: number | null, targetId: number | null = null) {
+    this.socket?.emit('VOICE_MESSAGE', { targetId, missionId, data });
   }
 
   emitSOS(location: { lat: number, lng: number }) {

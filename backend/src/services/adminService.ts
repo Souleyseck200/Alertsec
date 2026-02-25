@@ -45,10 +45,88 @@ class AdminService {
   }
 
   /**
-   * Liste toutes les zones
+   * Mettre à jour les informations d'un agent
    */
+  async updateAgent(adminId: number, agentId: number, data: any) {
+    const updatedAgent = await prisma.user.update({
+      where: { id: agentId },
+      data: {
+        ...data,
+        dateNaissance: data.dateNaissance ? new Date(data.dateNaissance) : undefined,
+      }
+    });
+
+    this.createLog(adminId, 'UPDATE_AGENT', agentId, `Données modifiées: ${Object.keys(data).join(', ')}`);
+    return updatedAgent;
+  }
+
+  /**
+   * Supprimer un agent (Nettoyage en cascade manuel)
+   */
+  async deleteAgent(adminId: number, agentId: number) {
+    const result = await prisma.$transaction(async (tx: any) => {
+      // 1. Trouver les affectations liées
+      const affectations = await tx.affectation.findMany({
+        where: { agentId },
+        select: { id: true }
+      });
+      const affIds = affectations.map((a: any) => a.id);
+
+      // 2. Supprimer les interventions liées
+      if (affIds.length > 0) {
+        await tx.intervention.deleteMany({
+          where: { affectationId: { in: affIds } }
+        });
+      }
+
+      // 3. Supprimer les affectations
+      await tx.affectation.deleteMany({
+        where: { agentId }
+      });
+
+      // 4. Supprimer les notifications liées
+      await tx.notification.deleteMany({
+        where: { userId: agentId }
+      });
+
+      // 5. Supprimer les contacts d'urgence
+      await tx.contactUrgence.deleteMany({
+        where: { userId: agentId }
+      });
+
+      // 6. Supprimer les logs vers cet utilisateur (optionnel, on garde la cibleId mais on perd le lien)
+      // On choisit de ne pas supprimer les logs pour garder une trace d'audit.
+
+      // 7. Enfin, supprimer l'utilisateur
+      return tx.user.delete({
+        where: { id: agentId }
+      });
+    });
+
+    this.createLog(adminId, 'DELETE_AGENT', agentId, `Nom: ${result.nom} ${result.prenom}`);
+    return result;
+  }
+
   async getAllZones() {
     return prisma.zone.findMany();
+  }
+
+  /**
+   * Liste tous les agents (pour la carte tactique)
+   */
+  async getAllAgents() {
+    return prisma.user.findMany({
+      where: { role: 'AGENT' },
+      select: {
+        id: true,
+        nom: true,
+        prenom: true,
+        latitude: true,
+        longitude: true,
+        isOccupied: true,
+        zoneId: true
+      }
+    });
   }
 
   /**
@@ -227,6 +305,93 @@ class AdminService {
       take: 50,
       include: { admin: { select: { nom: true, prenom: true } } }
     });
+  }
+
+  /**
+   * Réinitialiser le mot de passe d'un agent
+   */
+  async resetAgentPassword(adminId: number, agentId: number) {
+    const tempPassword = `Pass@${Math.floor(100 + Math.random() * 899)}`;
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    const agent = await prisma.user.update({
+      where: { id: agentId },
+      data: { 
+        password: hashedPassword,
+        mustChangePassword: true
+      }
+    });
+
+    this.createLog(adminId, 'RESET_PASSWORD', agentId, 'Nouveau mot de passe temporaire généré');
+    return { email: agent.email, tempPassword };
+  }
+
+  /**
+   * Supprimer une zone
+   * Nettoie les références dans User et Signalement avant suppression
+   */
+  async deleteZone(adminId: number, zoneId: number) {
+    const result = await prisma.$transaction(async (tx: any) => {
+      // 1. Détacher les agents de cette zone
+      await tx.user.updateMany({
+        where: { zoneId },
+        data: { zoneId: null }
+      });
+
+      // 2. Détacher les signalements de cette zone
+      await tx.signalement.updateMany({
+        where: { zoneId },
+        data: { zoneId: null }
+      });
+
+      // 3. Supprimer la zone
+      return tx.zone.delete({
+        where: { id: zoneId }
+      });
+    });
+
+    this.createLog(adminId, 'DELETE_ZONE', zoneId, `Zone: ${result.nom}`);
+    return result;
+  }
+
+  /**
+   * Supprimer un signalement (Archivage permanent)
+   * Nettoie toutes les relations (Affectations, Interventions, Notifications) en cascade manuelle
+   */
+  async deleteSignalement(adminId: number, sigId: number) {
+    const result = await prisma.$transaction(async (tx: any) => {
+      // 1. Trouver les affectations liées
+      const affectations = await tx.affectation.findMany({
+        where: { signalementId: sigId },
+        select: { id: true }
+      });
+      const affIds = affectations.map((a: any) => a.id);
+
+      // 2. Supprimer les interventions liées à ces affectations
+      if (affIds.length > 0) {
+        await tx.intervention.deleteMany({
+          where: { affectationId: { in: affIds } }
+        });
+      }
+
+      // 3. Supprimer les affectations
+      await tx.affectation.deleteMany({
+        where: { signalementId: sigId }
+      });
+
+      // 4. Supprimer les notifications liées
+      await tx.notification.deleteMany({
+        where: { signalementId: sigId }
+      });
+
+      // 5. Supprimer le signalement
+      return tx.signalement.delete({
+        where: { id: sigId }
+      });
+    });
+
+    this.createLog(adminId, 'DELETE_SIGNALEMENT', sigId, `Type: ${result.type}`);
+    return result;
   }
 }
 

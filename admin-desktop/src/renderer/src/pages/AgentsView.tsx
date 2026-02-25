@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Search, RefreshCw, UserCheck, UserX, MapPin, Zap,
-  Phone, Mail, Plus, X, Shield, Lock, BadgeCheck, Fingerprint, Printer, Loader2
+  Phone, Mail, Plus, X, Shield, Lock, BadgeCheck, Fingerprint, Printer, Loader2,
+  Trash2, Edit2
 } from 'lucide-react';
-import { Agent, Zone } from '../App';
+import { Agent, Zone } from '../types';
 import { adminService } from '../services/api';
 import { toast } from 'sonner';
 
@@ -13,6 +14,36 @@ interface AgentsViewProps {
   zones: Zone[];
   onReload: () => void;
 }
+
+const SuccessCredentialsModal: React.FC<{ isOpen: boolean; onClose: () => void; credentials: { email: string, tempPassword?: string } | null }> = ({ isOpen, onClose, credentials }) => {
+  if (!isOpen || !credentials) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/95 backdrop-blur-xl" />
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-md bg-[#0e0e10] border border-blue-500/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(59,130,246,0.2)] text-center">
+        <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mx-auto mb-6">
+          <BadgeCheck className="w-10 h-10" />
+        </div>
+        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Accès Tactique Généré</h3>
+        <p className="text-xs text-zinc-500 leading-relaxed mb-6">L'agent peut maintenant se connecter avec les identifiants suivants. Transmettez-les de manière sécurisée.</p>
+        
+        <div className="space-y-3 mb-8">
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-left">
+            <p className="text-[10px] font-black text-zinc-500 uppercase mb-1">Email</p>
+            <p className="text-sm font-bold text-white font-mono">{credentials.email}</p>
+          </div>
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-left relative group">
+            <p className="text-[10px] font-black text-zinc-500 uppercase mb-1">Mot de passe temporaire</p>
+            <p className="text-xl font-black text-blue-400 font-mono tracking-widest">{credentials.tempPassword || '********'}</p>
+          </div>
+        </div>
+
+        <button onClick={onClose} className="btn btn-primary w-full h-12 rounded-xl text-xs font-black uppercase tracking-[0.2em]">C'est noté</button>
+      </motion.div>
+    </div>
+  );
+};
 
 const TacticalIDModal: React.FC<{ isOpen: boolean; onClose: () => void; agent: Agent }> = ({ isOpen, onClose, agent }) => {
   if (!isOpen) return null;
@@ -112,7 +143,7 @@ const TacticalIDModal: React.FC<{ isOpen: boolean; onClose: () => void; agent: A
   );
 };
 
-const AdvancedEnrollmentModal: React.FC<{ isOpen: boolean; onClose: () => void; zones: Zone[]; onCreated: () => void }> = ({ isOpen, onClose, zones, onCreated }) => {
+const AdvancedEnrollmentModal: React.FC<{ isOpen: boolean; onClose: () => void; zones: Zone[]; onCreated: (credentials: any) => void }> = ({ isOpen, onClose, zones, onCreated }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ 
     nom: '', prenom: '', email: '', telephone: '', cin: '', 
@@ -127,12 +158,12 @@ const AdvancedEnrollmentModal: React.FC<{ isOpen: boolean; onClose: () => void; 
     
     try {
       setLoading(true);
-      await adminService.createAgent({
+      const res = await adminService.createAgent({
         ...formData,
         zoneId: formData.zoneId ? parseInt(formData.zoneId) : undefined
       });
       toast.success('Dossier d\'agent validé et activé');
-      onCreated();
+      onCreated(res.data);
       onClose();
     } catch (err: any) {
       toast.error(err.response?.data?.error || "Erreur lors de l'enrôlement");
@@ -314,14 +345,132 @@ const AdvancedEnrollmentModal: React.FC<{ isOpen: boolean; onClose: () => void; 
   );
 };
 
+const EditAgentModal: React.FC<{ isOpen: boolean; onClose: () => void; zones: Zone[]; agent: Agent; onUpdated: () => void }> = ({ isOpen, onClose, zones, agent, onUpdated }) => {
+  const [formData, setFormData] = useState({ 
+    nom: agent.nom, prenom: agent.prenom, email: agent.email, telephone: agent.telephone || '', 
+    cin: agent.cin || '', dateNaissance: agent.dateNaissance ? new Date(agent.dateNaissance).toISOString().split('T')[0] : '', 
+    groupeSanguin: agent.groupeSanguin || '', grade: agent.grade || '', unite: agent.unite || '', 
+    specialites: agent.specialites || '', adresse: agent.adresse || '', matricule: agent.matricule || '', 
+    zoneId: agent.zoneId?.toString() || '' 
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await adminService.updateAgent(agent.id, {
+        ...formData,
+        zoneId: formData.zoneId ? parseInt(formData.zoneId) : undefined
+      });
+      toast.success('Dossier d\'agent mis à jour');
+      onUpdated();
+      onClose();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Erreur lors de la mise à jour");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/90 backdrop-blur-md" />
+      <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} className="relative w-full max-w-2xl bg-[#0e0e10] border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
+        <div className="p-8 border-b border-white/5 bg-white/[0.02]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                <Edit2 className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white tracking-tight">Modification de Profil Agent</h3>
+                <p className="text-[10px] uppercase font-black text-zinc-500 tracking-[0.2em]">Agent : {agent.matricule}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-xl text-zinc-600 transition-colors"><X className="w-6 h-6" /></button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 block ml-1">Prénom</label>
+              <input type="text" required className="input h-12 rounded-xl bg-white/5 border-white/5" value={formData.prenom} onChange={e => setFormData({ ...formData, prenom: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 block ml-1">Nom</label>
+              <input type="text" required className="input h-12 rounded-xl bg-white/5 border-white/5" value={formData.nom} onChange={e => setFormData({ ...formData, nom: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 block ml-1">Grade</label>
+              <select className="input h-12 rounded-xl bg-white/5 border-white/5" value={formData.grade} onChange={e => setFormData({ ...formData, grade: e.target.value })}>
+                <option value="">Sélectionner un grade</option>
+                <option value="Lieutenant">Lieutenant</option>
+                <option value="Capitaine">Capitaine</option>
+                <option value="Commandant">Commandant</option>
+                <option value="Commissaire">Commissaire</option>
+                <option value="Brigadier">Brigadier</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 block ml-1">Zone d'Affectation</label>
+              <select className="input h-12 rounded-xl bg-white/5 border-white/5" value={formData.zoneId} onChange={e => setFormData({ ...formData, zoneId: e.target.value })}>
+                <option value="">Secteur Libre</option>
+                {zones.map(z => <option key={z.id} value={z.id}>{z.nom}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 block ml-1">Email</label>
+              <input type="email" required className="input h-12 rounded-xl bg-white/5 border-white/5" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase text-zinc-500 mb-2 block ml-1">Téléphone</label>
+              <input type="tel" className="input h-12 rounded-xl bg-white/5 border-white/5" value={formData.telephone} onChange={e => setFormData({ ...formData, telephone: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <button type="button" onClick={onClose} className="btn btn-ghost h-12 px-8 rounded-xl border-white/5 uppercase text-xs font-black tracking-widest">Annuler</button>
+            <button type="submit" disabled={loading} className="btn btn-primary flex-1 h-12 rounded-xl justify-center uppercase text-xs font-black tracking-[0.2em] shadow-lg shadow-blue-500/20 bg-amber-600 hover:bg-amber-500 border-amber-500/30">
+              {loading ? <RefreshCw className="animate-spin w-5 h-5" /> : 'Enregistrer les Modifications'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+
 const AgentsView: React.FC<AgentsViewProps> = ({ agents, zones, onReload }) => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'FREE' | 'BUSY'>('ALL');
   const [selected, setSelected] = useState<Agent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isIDModalOpen, setIsIDModalOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [targetIDAgent, setTargetIDAgent] = useState<Agent | null>(null);
+  const [credentials, setCredentials] = useState<any>(null);
   const [loadingAction, setLoadingAction] = useState<number | null>(null);
+
+  const handleCreated = (data: any) => {
+    setCredentials({
+      email: data.agent.email,
+      tempPassword: data.tempPassword
+    });
+    setIsSuccessModalOpen(true);
+    onReload();
+  };
 
   const handleShowID = (agent: Agent) => {
     setTargetIDAgent(agent);
@@ -351,6 +500,36 @@ const AgentsView: React.FC<AgentsViewProps> = ({ agents, zones, onReload }) => {
       onReload();
     } catch {
       toast.error('Erreur lors de la validation');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleResetPassword = async (agentId: number) => {
+    if (!window.confirm("Générer un nouveau mot de passe temporaire pour cet agent ?")) return;
+    try {
+      setLoadingAction(agentId);
+      const res = await adminService.resetAgentPassword(agentId);
+      setCredentials(res.data);
+      setIsSuccessModalOpen(true);
+      toast.success('Mot de passe réinitialisé');
+    } catch {
+      toast.error('Erreur lors de la réinitialisation');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const handleDeleteAgent = async (agentId: number) => {
+    if (!window.confirm("CRITICAL: Voulez-vous supprimer définitivement cet agent et tout son historique ? Cette action est irréversible.")) return;
+    try {
+      setLoadingAction(agentId);
+      await adminService.deleteAgent(agentId);
+      toast.success('Agent supprimé définitivement');
+      setSelected(null);
+      onReload();
+    } catch {
+      toast.error('Erreur lors de la suppression');
     } finally {
       setLoadingAction(null);
     }
@@ -579,6 +758,31 @@ const AgentsView: React.FC<AgentsViewProps> = ({ agents, zones, onReload }) => {
                           {selectedItem.statutOperationnel === 'HABILITÉ' ? 'Habilité' : 'Valider Habilitation'}
                        </button>
                        <button 
+                         onClick={() => handleResetPassword(selectedItem.id)}
+                         disabled={loadingAction === selectedItem.id}
+                         className="btn btn-ghost w-full justify-center h-10 border-white/5 text-[10px] uppercase font-black tracking-widest bg-white/5"
+                       >
+                          {loadingAction === selectedItem.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4 mr-2" />}
+                          Réinitialiser Password
+                       </button>
+
+                       <div className="grid grid-cols-2 gap-2">
+                          <button 
+                            onClick={() => setIsEditModalOpen(true)}
+                            className="btn btn-ghost justify-center h-10 border-amber-500/20 text-[10px] uppercase font-black tracking-widest bg-amber-500/5 text-amber-500 hover:bg-amber-500/10"
+                          >
+                             <Edit2 className="w-4 h-4 mr-2" /> Modifier
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteAgent(selectedItem.id)}
+                            disabled={loadingAction === selectedItem.id}
+                            className="btn btn-danger justify-center h-10 text-[10px] uppercase font-black tracking-widest"
+                          >
+                             {loadingAction === selectedItem.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />} Supprimer
+                          </button>
+                       </div>
+
+                       <button 
                          onClick={() => handleBlockUser(selectedItem.id, !!selectedItem.isBlocked)}
                          disabled={loadingAction === selectedItem.id}
                          className={`btn w-full justify-center h-10 text-[10px] uppercase font-black tracking-widest ${selectedItem.isBlocked ? 'bg-green-600/10 border-green-500/20 text-green-400' : 'btn-danger'}`}
@@ -596,7 +800,9 @@ const AgentsView: React.FC<AgentsViewProps> = ({ agents, zones, onReload }) => {
 
       <AnimatePresence>
         {isIDModalOpen && targetIDAgent && <TacticalIDModal isOpen={isIDModalOpen} onClose={() => setIsIDModalOpen(false)} agent={targetIDAgent} />}
-        {isModalOpen && <AdvancedEnrollmentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} zones={zones} onCreated={onReload} />}
+        {isModalOpen && <AdvancedEnrollmentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} zones={zones} onCreated={handleCreated} />}
+        {isEditModalOpen && selected && <EditAgentModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} zones={zones} agent={selected} onUpdated={onReload} />}
+        {isSuccessModalOpen && <SuccessCredentialsModal isOpen={isSuccessModalOpen} onClose={() => setIsSuccessModalOpen(false)} credentials={credentials} />}
       </AnimatePresence>
     </div>
   );

@@ -10,59 +10,15 @@ import DashboardView from './pages/DashboardView';
 import AgentsView from './pages/AgentsView';
 import AnalyticsView from './pages/AnalyticsView';
 import AuditLogView from './pages/AuditLogView';
+import SignalementsView from './pages/SignalementsView';
 import LoginPage from './pages/LoginPage';
 import CommandPalette from './components/CommandPalette';
 
 import { authService } from './services/api';
 import api, { adminService } from './services/api';
 
-// ─── TYPES ─────────────────────────────────────────────────────────────────
-export type ViewId = 'dashboard' | 'sitac' | 'agents' | 'analytics' | 'archives';
-
-export interface Signalement {
-  id: number;
-  type: string;
-  description: string;
-  gravite: string;
-  statut: string;
-  latitude: number | string;
-  longitude: number | string;
-  mediaUrl?: string;
-  audioUrl?: string;
-  videoUrl?: string;
-  citoyenId: number;
-  zoneId?: number;
-  dateCreation: string;
-  citoyen?: { nom: string; prenom: string; telephone: string; photoUrl: string };
-  affectations?: any[];
-}
-
-export interface Agent {
-  id: number; nom: string; prenom: string; role: string;
-  latitude?: number; longitude?: number;
-  zoneId?: number; isOccupied?: boolean; points?: number; matricule?: string;
-  email?: string; telephone?: string; photoUrl?: string;
-  cin?: string; dateNaissance?: string; grade?: string; unite?: string;
-  specialites?: string; groupeSanguin?: string; adresse?: string;
-}
-
-export interface Zone {
-  id: number; nom: string; localisation: string;
-  rayon_action: number; niveau_priorite: number;
-}
-
-export interface AppStats {
-  totalSignalements: number;
-  totalAgents: number;
-  totalZones: number;
-  sosByStatut: { statut: string; _count: number }[];
-  sosByGravite?: { gravite: string; _count: number }[];
-  agentsDisponibles?: number;
-}
-
-export interface TickerEvent {
-  id: string; message: string; time: Date; type: 'info' | 'alert' | 'success';
-}
+import { Signalement, Agent, Zone, AppStats, TickerEvent, ViewId } from './types';
+export type { Signalement, Agent, Zone, AppStats, TickerEvent, ViewId };
 
 const SOCKET_URL = 'http://localhost:3000';
 
@@ -104,6 +60,7 @@ const App: React.FC = () => {
   const [stats, setStats] = useState<AppStats | null>(null);
   const [predictions, setPredictions] = useState<any[]>([]);
   const [heatmap, setHeatmap] = useState<any[]>([]);
+  const [citizenLocations, setCitizenLocations] = useState<Record<number, { latitude: number; longitude: number }>>({});
   const [tickerEvents, setTickerEvents] = useState<TickerEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -203,6 +160,15 @@ const App: React.FC = () => {
       }
     });
 
+    s.on('CITIZEN_LOCATION_UPDATE', (d: any) => {
+      if (d.citoyenId && d.latitude != null && d.longitude != null) {
+        setCitizenLocations(prev => ({
+          ...prev,
+          [d.citoyenId]: { latitude: d.latitude, longitude: d.longitude }
+        }));
+      }
+    });
+
     s.on('AGENT_CONNECTED', (d: any) => {
       addTicker(`Agent ${d.nom || '#' + d.userId} connecté`, 'success');
       playBeep(660, 'sine', 0.05);
@@ -249,6 +215,7 @@ const App: React.FC = () => {
           predictions={predictions} stats={stats}
           isCrisis={isCrisis} 
           onDismissCrisis={() => setIsCrisis(false)}
+          user={user}
         />
       );
       case 'agents': return (
@@ -259,6 +226,14 @@ const App: React.FC = () => {
       );
       case 'archives': return (
         <AuditLogView />
+      );
+      case 'incidents': return (
+        <SignalementsView 
+          signalements={signalements} 
+          zones={zones}
+          citizenLocations={citizenLocations} 
+          onReload={() => { fetchAll(); fetchStats(); }} 
+        />
       );
     }
   };

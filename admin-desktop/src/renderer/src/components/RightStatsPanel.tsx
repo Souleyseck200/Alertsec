@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronRight, ChevronLeft, BrainCircuit, Trophy, TrendingUp, Shield, Activity } from 'lucide-react';
-import { Agent } from '../pages/CommandCenter';
+import { Agent } from '../types';
 
 interface RightStatsPanelProps {
   isOpen: boolean;

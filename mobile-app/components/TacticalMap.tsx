@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import MapView, { Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
-
-const TypedMapView = MapView as any;
-const TypedMarker = Marker as any;
-const TypedPolygon = Polygon as any;
+import MapView, { Marker, Polygon, PROVIDER_GOOGLE, Circle, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Siren, Layers } from 'lucide-react-native';
 import { Colors } from '../constants/Theme';
 import { uberBlackMapStyle } from '../constants/MapStyle';
+import * as Haptics from 'expo-haptics';
 import socketService from '../services/socket';
-import api from '../services/api';
+import api, { signalementService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 interface Agent {
@@ -30,11 +27,19 @@ interface Zone {
   niveau_priorite: number;
 }
 
-export default function TacticalMap() {
+interface TacticalMapProps {
+  onSOSSelect?: (sos: any) => void;
+  activeMissionId?: number | null;
+  routePoints?: { latitude: number; longitude: number }[];
+}
+
+export default function TacticalMap({ onSOSSelect, activeMissionId, routePoints = [] }: TacticalMapProps) {
   const { user } = useAuth();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
+  const [activeSOS, setActiveSOS] = useState<any[]>([]);
+  const [hotspots, setHotspots] = useState<any[]>([]);
   const [showZones, setShowZones] = useState(true);
 
   useEffect(() => {
@@ -58,46 +63,71 @@ export default function TacticalMap() {
         });
       });
 
-      // Initial fetch
+      // Listen for new SOS alerts
+      socketService.socket?.on('NOUVEAU_SIGNALEMENT', (data: any) => {
+        setActiveSOS(prev => {
+          if (prev.some(s => s.id === data.id)) return prev;
+          return [data, ...prev];
+        });
+      });
+
       fetchOperationalData();
     })();
 
     return () => {
       socketService.socket?.off('AGENT_LOCATION_UPDATE');
+      socketService.socket?.off('NOUVEAU_SIGNALEMENT');
     };
   }, []);
 
   const fetchOperationalData = async () => {
     try {
-      // Pour les citoyens, on ne récupère pas les données admin qui causent des 401/403
       if (user?.role === 'CITIZEN') {
-        const heatmapRes = await api.get('/signalements/heatmap');
-        // On pourrait traiter la heatmap ici si on avait des marqueurs spécifiques
+        const heatmap = await signalementService.getHeatmap().catch(() => ({ data: [] }));
+        setHotspots(heatmap.data || []);
         return;
       }
 
-      const [agentsRes, zonesRes] = await Promise.all([
+      const [agentsRes, zonesRes, sosRes, heatmapRes] = await Promise.all([
         api.get('/admin/agents').catch(() => ({ data: [] })), 
-        api.get('/admin/zones').catch(() => ({ data: [] }))
+        api.get('/admin/zones').catch(() => ({ data: [] })),
+        api.get('/signalements/all').catch(() => ({ data: [] })),
+        signalementService.getHeatmap().catch(() => ({ data: [] }))
       ]);
-      setAgents(agentsRes.data);
-      setZones(zonesRes.data);
+      
+      setAgents(agentsRes.data || []);
+      setZones(zonesRes.data || []);
+      setHotspots(heatmapRes.data || []);
+      
+      const allSOS = sosRes.data || [];
+      const activeAlerts = allSOS.filter((s: any) => s.statut === 'NOUVEAU' || s.statut === 'EN_COURS');
+      setActiveSOS(activeAlerts);
     } catch (e: any) {
-      console.log('Error fetching operational data (silent fail for safety):', e.message);
+      console.log('Error fetching operational data:', e.message);
     }
+  };
+
+  const handleMarkerPress = (sos: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (onSOSSelect) onSOSSelect(sos);
   };
 
   const parseZone = (locStr: string) => {
     try {
+      if (!locStr) return null;
       const parsed = JSON.parse(locStr);
       if (Array.isArray(parsed) && Array.isArray(parsed[0])) {
-        return (parsed as any[]).map(p => ({ latitude: p[0], longitude: p[1] }));
+        return (parsed as any[]).map(p => ({ latitude: Number(p[0]), longitude: Number(p[1]) }));
       }
-      return null;
+      if (parsed && typeof parsed === 'object' && 'lat' in parsed) {
+        return { isCircle: true, latitude: Number(parsed.lat), longitude: Number(parsed.lng) };
+      }
     } catch {
       return null;
     }
   };
+
+  const isAssignedZone = (zoneId: number) => user?.zoneId === zoneId;
 
   return (
     <View style={styles.container}>
@@ -111,32 +141,106 @@ export default function TacticalMap() {
           latitudeDelta: 0.1,
           longitudeDelta: 0.1,
         }}
-        showsUserLocation
+        showsUserLocation={false}
       >
-        {/* Agents */}
-        {agents.map(agent => (
+        {/* User Self Puck */}
+        {location && (
           <Marker
-            key={`agent-${agent.id}`}
-            coordinate={{ latitude: agent.latitude, longitude: agent.longitude }}
+            coordinate={{ 
+              latitude: location.coords.latitude, 
+              longitude: location.coords.longitude 
+            }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            flat
+            rotation={location.coords.heading || 0}
           >
-            <View style={[styles.agentMarker, agent.isOccupied && styles.occupied]}>
-              <Siren size={14} color="#fff" />
+            <View style={styles.puckContainer}>
+              <View style={styles.puckGlow} />
+              <View style={styles.puckCenter}>
+                <View style={styles.puckCone} />
+              </View>
             </View>
           </Marker>
+        )}
+
+        {/* Hotspots */}
+        {hotspots.map((h, i) => (
+          h.latitude && h.longitude && (
+            <Circle 
+              key={`hotspot-${i}`}
+              center={{ latitude: h.latitude, longitude: h.longitude }}
+              radius={400}
+              fillColor="rgba(239, 68, 68, 0.08)"
+              strokeColor="rgba(239, 68, 68, 0.2)"
+              strokeWidth={1}
+            />
+          )
         ))}
 
-        {/* Danger Zones */}
+        {/* SOS Markers */}
+        {activeSOS
+          .filter(sos => !activeMissionId || sos.id === activeMissionId)
+          .map((sos: any) => (
+            sos.latitude && sos.longitude && (
+              <Marker
+                key={`sos-${sos.id}`}
+                coordinate={{ latitude: Number(sos.latitude), longitude: Number(sos.longitude) }}
+                onPress={() => handleMarkerPress(sos)}
+              >
+                <View style={[
+                  styles.sosMarker, 
+                  sos.gravite === 'VITAL' && styles.sosVital,
+                  sos.statut === 'EN_COURS' && styles.sosInProgress
+                ]}>
+                  <Siren size={14} color="#fff" />
+                </View>
+              </Marker>
+            )
+          ))}
+
+        {/* Route Polyline */}
+        {routePoints.length > 1 && (
+          <Polyline 
+            coordinates={routePoints}
+            strokeColor={Colors.accentBlue}
+            strokeWidth={3}
+          />
+        )}
+
+        {/* Patrol Zones */}
         {showZones && zones.map(zone => {
-          const coords = parseZone(zone.localisation);
-          if (!coords) return null;
-          const color = zone.niveau_priorite >= 3 ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)';
+          const parsed = parseZone(zone.localisation);
+          if (!parsed) return null;
+          
+          const isAgentZone = isAssignedZone(zone.id);
+          let color = 'rgba(255, 255, 255, 0.05)';
+          let strokeColor = 'rgba(255, 255, 255, 0.2)';
+          
+          if (isAgentZone) {
+            color = 'rgba(59, 130, 246, 0.1)'; 
+            strokeColor = '#3b82f6';
+          }
+
+          if ((parsed as any).isCircle) {
+             return (
+               <Circle 
+                 key={`zone-${zone.id}`}
+                 center={parsed as any}
+                 radius={zone.rayon_action || 500}
+                 fillColor={color}
+                 strokeColor={strokeColor}
+                 strokeWidth={2}
+               />
+             );
+          }
+
           return (
             <Polygon
               key={`zone-${zone.id}`}
-              coordinates={coords}
+              coordinates={parsed as any[]}
               fillColor={color}
-              strokeColor={color.replace('0.4', '1')}
-              strokeWidth={2}
+              strokeColor={strokeColor}
+              strokeWidth={isAgentZone ? 3 : 1}
             />
           );
         })}
@@ -146,53 +250,82 @@ export default function TacticalMap() {
         style={styles.layerToggle}
         onPress={() => setShowZones(!showZones)}
       >
-        <Layers size={20} color={showZones ? Colors.accentBlue : '#71717a'} />
+        <Layers size={18} color={showZones ? Colors.accentBlue : '#71717a'} />
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  container: { ...StyleSheet.absoluteFillObject },
+  map: { ...StyleSheet.absoluteFillObject },
   layerToggle: {
     position: 'absolute',
-    top: 60,
+    top: 120,
     right: 20,
     backgroundColor: 'rgba(24, 24, 27, 0.9)',
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
     elevation: 5,
+    zIndex: 10,
   },
-  agentMarker: {
+  sosMarker: {
     width: 32,
     height: 32,
+    backgroundColor: '#ef4444',
     borderRadius: 16,
-    backgroundColor: Colors.accentBlue,
     borderWidth: 2,
     borderColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#ef4444',
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
   },
-  occupied: {
-    backgroundColor: Colors.accentOrange,
+  sosVital: { backgroundColor: '#7f1d1d', borderColor: '#ef4444' },
+  sosInProgress: { backgroundColor: Colors.accentBlue, borderColor: '#fff' },
+  puckContainer: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  agentInitials: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '900',
+  puckGlow: {
+    position: 'absolute',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.5)',
+  },
+  puckCenter: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: Colors.accentBlue,
+    borderWidth: 2,
+    borderColor: '#fff',
+    elevation: 5,
+    alignItems: 'center',
+  },
+  puckCone: {
+    position: 'absolute',
+    top: -6,
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderBottomWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#fff',
   },
 });

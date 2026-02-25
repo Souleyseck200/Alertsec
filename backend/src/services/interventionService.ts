@@ -18,7 +18,7 @@ class InterventionService {
       });
 
       if (!currentSignalement) throw new Error('Signalement non trouvé');
-      if (currentSignalement.statut !== 'NOUVEAU') {
+      if (currentSignalement.statut !== 'NOUVEAU' && currentSignalement.statut !== 'ZONE_INCONNUE') {
         throw new Error('Alerte déjà sécurisée par un autre agent');
       }
 

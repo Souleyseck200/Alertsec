@@ -3,41 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Image, Volume2, Play, User, Zap, CheckCircle, BrainCircuit,
   RadioTower, Phone, UserCheck, ShieldAlert, X, MoreHorizontal, Mic, Radio,
-  Printer, FileText, Download
+  Printer, FileText, Download, Rewind, FastForward, Pause, Maximize2, Video
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from './ui/sheet';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 
-export interface Signalement {
-  id: number;
-  type: string;
-  description: string;
-  gravite: string;
-  statut: string;
-  latitude: number | string;
-  longitude: number | string;
-  dateCreation: string;
-  mediaUrl?: string;
-  audioUrl?: string;
-  videoUrl?: string;
-  citoyen?: { nom: string; prenom: string; telephone: string; photoUrl?: string };
-  affectations?: { 
-    agentId: number; 
-    agent: { nom: string; prenom: string; photoUrl?: string };
-    interventions?: { dateFin: string | null }[];
-  }[];
-  zoneId?: number;
-}
-
-export interface Agent {
-  id: number; nom: string; prenom: string; role: string;
-  latitude?: number; longitude?: number; isOccupied?: boolean;
-  points?: number; photoUrl?: string; matricule?: string;
-  grade?: string; unite?: string; specialites?: string; cin?: string;
-  zoneId?: number;
-}
+import { Signalement, Agent } from '../types';
 
 interface SOSSheetProps {
   socket: any;
@@ -60,6 +33,7 @@ const SOSSheet: React.FC<SOSSheetProps> = ({ socket, signalement: sig, agents, o
   const [loadingAssign, setLoadingAssign] = useState(false);
   const [done, setDone] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [activeMedia, setActiveMedia] = useState<{ type: 'IMAGE' | 'AUDIO' | 'VIDEO', url: string } | null>(null);
 
   const currentAffectation = sig?.affectations?.[0];
 
@@ -122,9 +96,18 @@ const SOSSheet: React.FC<SOSSheetProps> = ({ socket, signalement: sig, agents, o
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        blob.arrayBuffer().then(buf => {
-          socket?.emit('VOICE_MESSAGE', { targetId: currentAffectation?.agentId || null, data: buf });
-        });
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          if (socket?.connected) {
+            socket.emit('VOICE_MESSAGE', { 
+              targetId: currentAffectation?.agentId || null, 
+              missionId: sig?.id || null,
+              data: base64data 
+            });
+          }
+        };
         stream.getTracks().forEach(t => t.stop());
       };
       mr.start();
@@ -321,20 +304,55 @@ const SOSSheet: React.FC<SOSSheetProps> = ({ socket, signalement: sig, agents, o
                     ) : (
                       <div className="space-y-3">
                         {sig.mediaUrl && (
-                          <div className="group relative rounded-2xl overflow-hidden border border-white/10 aspect-video bg-black">
-                            <img src={`${MEDIA_ROOT}/${sig.mediaUrl}`} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="SOS" />
+                          <div 
+                            onClick={() => setActiveMedia({ type: 'IMAGE', url: sig.mediaUrl! })}
+                            className="group relative rounded-2xl overflow-hidden border border-white/10 aspect-video bg-black cursor-pointer"
+                          >
+                            <img 
+                              src={sig.mediaUrl.startsWith('http') ? sig.mediaUrl : `${MEDIA_ROOT}${sig.mediaUrl}`} 
+                              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" 
+                              alt="SOS" 
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                               <Maximize2 className="w-6 h-6 text-white" />
+                            </div>
                             <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
                               <p className="text-[10px] font-bold text-white">Capture Photo Terrain</p>
                             </div>
                           </div>
                         )}
                         {sig.audioUrl && (
-                          <div className="p-4 bg-zinc-900 border border-white/5 rounded-xl space-y-3">
-                            <div className="flex items-center gap-3">
-                              <Volume2 className="w-4 h-4 text-amber-400" />
-                              <span className="text-xs font-bold text-white">Capture Audio (Ambiance)</span>
+                          <div 
+                            onClick={() => setActiveMedia({ type: 'AUDIO', url: sig.audioUrl! })}
+                            className="p-4 bg-zinc-900 border border-white/5 rounded-xl space-y-3 cursor-pointer group hover:border-orange-500/30 transition-all"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Volume2 className="w-4 h-4 text-amber-400" />
+                                <span className="text-xs font-bold text-white">Capture Audio (Ambiance)</span>
+                              </div>
+                              <Maximize2 className="w-3.5 h-3.5 text-zinc-600 group-hover:text-white" />
                             </div>
-                            <audio src={`${MEDIA_ROOT}/${sig.audioUrl}`} controls className="w-full h-8 brightness-90 contrast-125" />
+                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                               <div className="w-1/3 h-full bg-orange-500/50" />
+                            </div>
+                          </div>
+                        )}
+                        {sig.videoUrl && (
+                          <div 
+                            onClick={() => setActiveMedia({ type: 'VIDEO', url: sig.videoUrl! })}
+                            className="group relative rounded-2xl overflow-hidden border border-white/10 aspect-video bg-black cursor-pointer"
+                          >
+                            <video 
+                              src={sig.videoUrl.startsWith('http') ? sig.videoUrl : `${MEDIA_ROOT}${sig.videoUrl}`} 
+                              className="w-full h-full object-cover muted" 
+                            />
+                            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                               <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white mb-2">
+                                  <Play className="w-5 h-5 ml-1" />
+                               </div>
+                               <p className="text-[9px] font-bold text-white uppercase tracking-widest">Voir Vidéo SOS</p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -459,7 +477,119 @@ const SOSSheet: React.FC<SOSSheetProps> = ({ socket, signalement: sig, agents, o
           )}
         </AnimatePresence>
       </SheetContent>
+
+      {/* Tactical Media Overlay */}
+      <AnimatePresence>
+        {activeMedia && (
+          <MediaOverlay media={activeMedia} onClose={() => setActiveMedia(null)} />
+        )}
+      </AnimatePresence>
     </Sheet>
+  );
+};
+
+const MediaOverlay = ({ media, onClose }: { media: { type: 'IMAGE' | 'AUDIO' | 'VIDEO', url: string }, onClose: () => void }) => {
+  const mediaRef = React.useRef<any>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const fullUrl = media.url.startsWith('http') ? media.url : `${MEDIA_ROOT}${media.url}`;
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (mediaRef.current) {
+      if (isPlaying) mediaRef.current.pause();
+      else mediaRef.current.play();
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const skip = (seconds: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (mediaRef.current) {
+      mediaRef.current.currentTime += seconds;
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-12"
+    >
+      <button 
+        onClick={onClose}
+        className="absolute top-8 right-8 w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-all border border-white/10"
+      >
+        <X className="w-6 h-6" />
+      </button>
+
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        onClick={e => e.stopPropagation()}
+        className="max-w-6xl w-full border border-white/10 rounded-[32px] overflow-hidden bg-[#0c0c0e] shadow-[0_0_100px_rgba(0,0,0,0.8)] relative"
+      >
+        {media.type === 'IMAGE' && (
+          <img src={fullUrl} className="w-full h-auto max-h-[85vh] object-contain" alt="Tactical Evidence" />
+        )}
+
+        {media.type === 'AUDIO' && (
+          <div className="py-24 px-12 flex flex-col items-center justify-center">
+            <div className="w-24 h-24 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500 mb-8 border border-orange-500/20 shadow-[0_0_40px_rgba(249,115,22,0.15)]">
+              <Volume2 className="w-10 h-10" />
+            </div>
+            <h3 className="text-xl font-black text-white uppercase tracking-[0.25em] mb-2">Décryptage Audio SOS</h3>
+            <p className="text-zinc-500 text-[10px] font-mono mb-12 uppercase tracking-widest">SITAC_PROTO_v8 // INTERCEPT_LIVE</p>
+            
+            <audio 
+              ref={mediaRef} 
+              src={fullUrl} 
+              onPlay={() => setIsPlaying(true)} 
+              onPause={() => setIsPlaying(false)}
+            />
+
+            <div className="flex items-center gap-12 text-white">
+              <button onClick={e => skip(-10, e)} className="p-4 hover:text-blue-500 transition-colors"><Rewind className="w-8 h-8" /></button>
+              <button 
+                onClick={togglePlay} 
+                className="w-20 h-20 rounded-full bg-white text-zinc-950 flex items-center justify-center hover:scale-105 transition-all shadow-2xl"
+              >
+                {isPlaying ? <Pause className="w-10 h-10" /> : <Play className="w-10 h-10 ml-1" />}
+              </button>
+              <button onClick={e => skip(10, e)} className="p-4 hover:text-blue-500 transition-colors"><FastForward className="w-8 h-8" /></button>
+            </div>
+          </div>
+        )}
+
+        {media.type === 'VIDEO' && (
+          <div className="relative group">
+            <video 
+              ref={mediaRef} 
+              src={fullUrl} 
+              className="w-full h-auto max-h-[85vh]" 
+              onPlay={() => setIsPlaying(true)} 
+              onPause={() => setIsPlaying(false)}
+            />
+            
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            
+            <div className="absolute bottom-10 left-0 right-0 px-12 flex items-center justify-center gap-12 text-white z-10 transition-transform duration-300 transform translate-y-4 group-hover:translate-y-0">
+              <button onClick={e => skip(-10, e)} className="p-3 hover:text-blue-400 transition-colors"><Rewind className="w-7 h-7" /></button>
+              <button 
+                onClick={togglePlay} 
+                className="w-16 h-16 rounded-full bg-white text-[#0c0c0e] flex items-center justify-center hover:scale-110 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+              >
+                {isPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
+              </button>
+              <button onClick={e => skip(10, e)} className="p-3 hover:text-blue-400 transition-colors"><FastForward className="w-7 h-7" /></button>
+            </div>
+
+            <div className="absolute top-8 left-8 px-5 py-2.5 bg-black/60 backdrop-blur-2xl border border-white/10 rounded-xl text-[10px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
+              SITAC_CAM_FEED // LIVE_SECURE
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
   );
 };
 

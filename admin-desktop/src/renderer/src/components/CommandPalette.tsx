@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Command } from 'cmdk';
 import { Search, User, Map, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Agent, Zone } from '../pages/CommandCenter';
+import { Agent, Zone } from '../types';
 
 interface CommandPaletteProps {
   open: boolean;

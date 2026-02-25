@@ -4,7 +4,8 @@ import {
   Settings, LogOut, Search, Shield, ChevronRight,
   Bell, Zap, Activity
 } from 'lucide-react';
-import { ViewId } from '../App';
+import logo from '../assets/logo.png';
+import { ViewId } from '../types';
 
 interface SidebarProps {
   activeView: ViewId;
@@ -32,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navItems: NavItemDef[] = [
     { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard, description: 'Vue globale & KPIs' },
     { id: 'sitac', label: 'SITAC Live', icon: Map, badge: sosCount > 0 ? sosCount : null, badgeColor: 'red', description: 'Carte opérationnelle' },
+    { id: 'incidents', label: 'Flux Signalements', icon: Bell, badge: sosCount > 0 ? sosCount : null, badgeColor: 'orange', description: 'Monitoring global' },
     { id: 'agents', label: 'Agents', icon: Users, badge: agentCount > 0 ? agentCount : null, badgeColor: 'blue', description: `${agentCount} disponibles` },
     { id: 'analytics', label: 'IA & Prédictions', icon: BrainCircuit, description: 'Analyse prédictive' },
     { id: 'archives', label: 'Journal d\'Audit', icon: Archive, description: 'Historique & traçabilité' },
@@ -44,8 +46,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     <aside className={`sidebar ${isCrisis ? 'crisis-active' : ''}`} style={isCrisis ? { background: 'linear-gradient(to bottom, #110505, #09090b)', borderRight: '1px solid rgba(239, 68, 68, 0.2)' } : {}}>
       {/* ── Logo ── */}
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">
-          <Shield style={{ width: 16, height: 16 }} />
+        <div className="sidebar-logo-icon" style={{ background: 'transparent', boxShadow: 'none' }}>
+          <img src={logo} alt="AlertSec" style={{ width: 36, height: 36, objectFit: 'contain' }} />
         </div>
         <div className="sidebar-logo-text">
           <div className="sidebar-logo-name">AlertSec</div>
@@ -117,11 +119,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span style={{ fontSize: 10, color: 'var(--text-disabled)', marginLeft: 'auto', fontFamily: 'JetBrains Mono, monospace' }}>
             bientôt
           </span>
-        </button>
-
-        <button className="nav-item" title="Notifications">
-          <Bell style={{ width: 15, height: 15 }} className="nav-icon" />
-          <span style={{ fontSize: 13 }}>Alertes</span>
         </button>
       </div>
 

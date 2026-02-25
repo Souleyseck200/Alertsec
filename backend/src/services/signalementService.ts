@@ -3,7 +3,7 @@ import socketService from './socketService';
 import { z } from 'zod';
 
 export const signalementSchema = z.object({
-  type: z.enum(['ACCIDENT', 'INCENDIE', 'AGRESSION', 'VOL', 'INONDATION', 'RASSEMBLEMENT_SUSPECT', 'AUTRE']),
+  type: z.enum(['ACCIDENT', 'INCENDIE', 'AGRESSION', 'VOL', 'INONDATION', 'RASSEMBLEMENT_SUSPECT', 'AUTRE', 'URGENCE']),
   description: z.string(),
   latitude: z.coerce.number(),
   longitude: z.coerce.number(),
@@ -24,15 +24,33 @@ class SignalementService {
     let minDistance = Infinity;
 
     for (const zone of zones) {
-      const [zLat, zLng] = zone.localisation.split(',').map((n: string) => parseFloat(n.trim()));
-      if (isNaN(zLat) || isNaN(zLng)) continue;
-      const distance = Math.sqrt(Math.pow(lat - zLat, 2) + Math.pow(lng - zLng, 2));
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestZone = zone;
+      try {
+        const loc = JSON.parse(zone.localisation);
+        let zLat = 0, zLng = 0;
+
+        if (Array.isArray(loc)) {
+          // Centroid for Polygons
+          zLat = loc.reduce((sum, p) => sum + p[0], 0) / loc.length;
+          zLng = loc.reduce((sum, p) => sum + p[1], 0) / loc.length;
+        } else if (loc && typeof loc === 'object' && loc.lat) {
+          // Circle/Point center
+          zLat = loc.lat;
+          zLng = loc.lng;
+        } else {
+          continue;
+        }
+
+        const distance = Math.sqrt(Math.pow(lat - zLat, 2) + Math.pow(lng - zLng, 2));
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestZone = zone;
+        }
+      } catch (e) {
+        continue;
       }
     }
-    if (minDistance > 0.09) return null;
+    // Threshold for "in zone" (approx 10km radius for fallback detection)
+    if (minDistance > 0.1) return null;
     return nearestZone;
   }
 
@@ -83,7 +101,7 @@ class SignalementService {
 
     // ICE Protocol : Alerter les contacts de confiance
     if (validatedData.type_entree === 'SOS_AUTO' || validatedData.gravite === 'VITAL') {
-      this.alertEmergencyContacts(signalement);
+      this.alertEmergencyContacts(enrichedSignalement || signalement);
     }
 
     // ESCALADE

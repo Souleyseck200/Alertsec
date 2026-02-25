@@ -9,7 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area 
 } from 'recharts';
-import { Agent, AppStats } from '../App';
+import { Agent, AppStats } from '../types';
 
 interface AnalyticsViewProps {
   predictions: any[];

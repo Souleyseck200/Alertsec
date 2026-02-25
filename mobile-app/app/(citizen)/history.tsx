@@ -19,7 +19,7 @@ export default function SignalHistory() {
         <View style={styles.header}>
           <Text style={styles.title}>MES SIGNALEMENTS</Text>
           <TouchableOpacity style={styles.addBtn}>
-            <Plus color="#71d24d" size={24} />
+            <Plus color="#007AFF" size={24} />
           </TouchableOpacity>
         </View>
 
@@ -54,7 +54,7 @@ export default function SignalHistory() {
                     <Text style={styles.date}>{signal.date}</Text>
                     <TouchableOpacity style={styles.detailsBtn}>
                       <Text style={styles.detailsText}>DÉTAILS</Text>
-                      <ChevronRight size={14} color="#71d24d" />
+                      <ChevronRight size={14} color="#007AFF" />
                     </TouchableOpacity>
                   </View>
                 </CardContent>
@@ -79,11 +79,11 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255,255,255,0.05)'
   },
   title: { color: '#fff', fontSize: 20, fontWeight: '900', letterSpacing: 1 },
-  addBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(113, 210, 77, 0.1)', alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: 20 },
+  addBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0, 122, 255, 0.1)', alignItems: 'center', justifyContent: 'center' },
+  scroll: { padding: 20, paddingBottom: 150 },
   desc: { color: '#a1a1aa', fontSize: 14, lineHeight: 20 },
   footer: { flexDirection: 'row', alignItems: 'center', marginTop: 15, gap: 5 },
   date: { color: '#71717a', fontSize: 12, flex: 1 },
   detailsBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  detailsText: { color: '#71d24d', fontSize: 12, fontWeight: '900' }
+  detailsText: { color: '#007AFF', fontSize: 12, fontWeight: '900' }
 });

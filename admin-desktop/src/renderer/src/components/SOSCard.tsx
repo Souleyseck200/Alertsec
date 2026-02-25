@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Clock, Zap, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
-import { Signalement } from '../pages/CommandCenter';
+import { Signalement } from '../types';
 
 interface SOSCardProps {
   signalement: Signalement;

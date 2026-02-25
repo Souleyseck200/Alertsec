@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { TickerEvent } from '../pages/CommandCenter';
+import { TickerEvent } from '../types';
 
 interface AlertTickerProps { events: TickerEvent[]; }
 

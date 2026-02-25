@@ -8,6 +8,7 @@ class SocketService {
 
   init(server: HTTPServer) {
     this.io = new SocketIOServer(server, {
+      maxHttpBufferSize: 1e7, // 10MB
       cors: {
         origin: "*", 
         methods: ["GET", "POST"]
@@ -44,27 +45,40 @@ class SocketService {
         if (agent?.zoneId) {
           socket.join(`zone_${agent.zoneId}`);
           console.log(`🏠 Agent ${userId} a rejoint la salle : zone_${agent.zoneId} et agents_room`);
+        } else {
+          console.log(`🏠 Agent ${userId} a rejoint agents_room (pas de zone)`);
         }
       }
 
       // ... existing location/instruction code ...
       // 3. Mise à jour de localisation en temps réel
       socket.on('UPDATE_LOCATION', async (data: { lat: number, lng: number }) => {
-        if (role === 'AGENT') {
-          await prisma.user.update({
-            where: { id: userId },
-            data: { latitude: data.lat, longitude: data.lng }
-          });
+        try {
+          if (role === 'AGENT') {
+            await prisma.user.update({
+              where: { id: userId },
+              data: { latitude: data.lat, longitude: data.lng }
+            });
 
-          // Diffuser aux autres agents de la zone pour l'entraide
-          const agent = await prisma.user.findUnique({ where: { id: userId }, select: { zoneId: true } });
-          if (agent?.zoneId) {
-            socket.to(`zone_${agent.zoneId}`).emit('AGENT_LOCATION_UPDATE', {
-              agentId: userId,
+            // Diffuser aux autres agents de la zone pour l'entraide
+            const agent = await prisma.user.findUnique({ where: { id: userId }, select: { zoneId: true } });
+            if (agent?.zoneId) {
+              socket.to(`zone_${agent.zoneId}`).emit('AGENT_LOCATION_UPDATE', {
+                agentId: userId,
+                latitude: data.lat,
+                longitude: data.lng
+              });
+            }
+          } else if (role === 'CITOYEN') {
+            // Pour les citoyens, on diffuse simplement à l'admin pour le suivi en temps réel de l'alerte
+            this.io?.to('admin_room').emit('CITIZEN_LOCATION_UPDATE', {
+              citoyenId: userId,
               latitude: data.lat,
               longitude: data.lng
             });
           }
+        } catch (err) {
+          console.warn(`⚠️ [Socket] Failed to update location for user ${userId}: Non-existent record.`);
         }
       });
 
@@ -93,20 +107,37 @@ class SocketService {
       });
 
       // 6. Talkie-Walkie Vocal (Bidirectional Broadcast)
-      socket.on('VOICE_MESSAGE', (data: { targetId: number | null; data: ArrayBuffer }) => {
+      socket.on('VOICE_MESSAGE', (data: { targetId?: number | null; missionId?: number | null; data: any }) => {
         if (role === 'ADMIN') {
-          console.log(`🎙️ GLOBAL BROADCAST de l'Admin ${userId} (${data.data.byteLength} bytes)`);
-          if (data.targetId) {
+          if (data.missionId) {
+            // Private mission room
+            console.log(`🎙️ [VOICE] Admin ${userId} -> Mission Room ${data.missionId}`);
+            this.io?.to(`room_mission_${data.missionId}`).emit('VOICE_BROADCAST', { from: userId, data: data.data, missionId: data.missionId });
+          } else if (data.targetId) {
+            // Direct user message
             this.io?.to(`user_${data.targetId}`).emit('VOICE_BROADCAST', { from: userId, data: data.data });
           } else {
-            // Broadcast to ALL agents
-            this.io?.to('agents_room').emit('VOICE_BROADCAST', { from: userId, isGlobal: true, data: data.data });
+            // Global Agent Broadcast
+            this.io?.to('agents_room').emit('VOICE_BROADCAST', { from: userId, data: data.data, isGlobal: true });
           }
         } else if (role === 'AGENT') {
-          console.log(`🎙️ REPLY VOCAL de l'Agent ${userId} (${data.data.byteLength} bytes)`);
-          // Agents voice replies go to admin room
-          this.io?.to('admin_room').emit('VOICE_BROADCAST', { from: userId, data: data.data, agentName: `Agent #${userId}` });
+          if (data.missionId) {
+            console.log(`🎙️ [VOICE] Agent ${userId} -> Mission Room ${data.missionId}`);
+            this.io?.to(`room_mission_${data.missionId}`).emit('VOICE_BROADCAST', { from: userId, data: data.data, missionId: data.missionId });
+            // RELAY TO ADMIN (Very important for SITAC monitoring)
+            this.io?.to('admin_room').emit('VOICE_BROADCAST', { from: userId, data: data.data, missionId: data.missionId, agentName: `Agent #${userId}` });
+          } else {
+            // Default to Admin room
+            this.io?.to('admin_room').emit('VOICE_BROADCAST', { from: userId, data: data.data, agentName: `Agent #${userId}` });
+          }
         }
+      });
+
+      // 7. Join Mission Room
+      socket.on('JOIN_MISSION_ROOM', (data: { missionId: number }) => {
+        const roomName = `room_mission_${data.missionId}`;
+        socket.join(roomName);
+        console.log(`📡 [Socket] User ${userId} joined ${roomName}`);
       });
 
       socket.on('disconnect', () => {
@@ -122,6 +153,7 @@ class SocketService {
     }
     console.log(`📡 [SocketService] Emitting NOUVEAU_SIGNALEMENT for #${signalement.id} (Zone: ${zoneId || 'Global'})`);
     this.io.to('admin_room').emit('NOUVEAU_SIGNALEMENT', signalement);
+    this.io.to('agents_room').emit('NOUVEAU_SIGNALEMENT', signalement); // Always notify all agents for awareness
     if (zoneId) {
       this.io.to(`zone_${zoneId}`).emit('NOUVEAU_SIGNALEMENT', signalement);
     }
